@@ -1,6 +1,7 @@
 package com.tenderxiamu.eyecaretv
 
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -10,6 +11,7 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -35,12 +37,17 @@ class ReminderView(
     var onSnooze: (() -> Unit)? = null
 
     private val playerView = VideoPlayerView(context)
-    private val hintView = TextView(context)
+    private val hintView = TextView(context).apply {
+        text = context.getString(R.string.reminder_preparing)
+        setTextColor(COLOR_MUTED)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+    }
     private val handler = Handler(Looper.getMainLooper())
     private var finished = false
     private var startedOnce = false
     private var fallbackMode = false
     private var fallbackLeft = FALLBACK_SECONDS
+    private var layoutOrientation = Configuration.ORIENTATION_UNDEFINED
 
     private val progressTicker = object : Runnable {
         override fun run() {
@@ -59,7 +66,38 @@ class ReminderView(
                 intArrayOf(COLOR_BACKGROUND, COLOR_BACKGROUND_BOTTOM),
             ),
         )
+        buildContent(resources.configuration.orientation)
+    }
 
+    /** 窗口旋转后重建布局，并从断点续播。 */
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        val orientation = resources.configuration.orientation
+        if (orientation == Configuration.ORIENTATION_UNDEFINED || orientation == layoutOrientation) return
+        val resumePosition = if (startedOnce && !finished && !fallbackMode) {
+            playerView.positionMs().coerceAtLeast(0)
+        } else {
+            0
+        }
+        buildContent(orientation)
+        if (resumePosition > 0) {
+            resolveSource()?.let { playerView.play(it, spec.volume, resumePosition) }
+        }
+    }
+
+    private fun buildContent(orientation: Int) {
+        layoutOrientation = orientation
+        removeAllViews()
+        (playerView.parent as? ViewGroup)?.removeView(playerView)
+        (hintView.parent as? ViewGroup)?.removeView(hintView)
+        if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            buildLandscape()
+        } else {
+            buildPortrait()
+        }
+    }
+
+    private fun buildPortrait() {
         val content = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
@@ -67,26 +105,8 @@ class ReminderView(
         }
         addView(content, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
 
-        content.addView(
-            TextView(context).apply {
-                text = context.getString(R.string.reminder_title)
-                setTextColor(COLOR_TEXT)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 28f)
-                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-                gravity = Gravity.CENTER
-            },
-        )
-
-        content.addView(
-            TextView(context).apply {
-                text = buildMessage()
-                setTextColor(COLOR_MUTED)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-                gravity = Gravity.CENTER
-                setLineSpacing(dp(6).toFloat(), 1.2f)
-                setPadding(0, dp(12), 0, dp(24))
-            },
-        )
+        content.addView(titleView(28f))
+        content.addView(messageView(15f).apply { setPadding(0, dp(12), 0, dp(24)) })
 
         playerView.visibility = View.VISIBLE
         content.addView(
@@ -96,36 +116,94 @@ class ReminderView(
 
         content.addView(
             hintView.apply {
-                text = context.getString(R.string.reminder_preparing)
-                setTextColor(COLOR_MUTED)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-                gravity = Gravity.CENTER
                 setPadding(0, dp(16), 0, dp(8))
             },
         )
 
         if (spec.allowSnooze) {
             content.addView(
-                TextView(context).apply {
-                    text = context.getString(R.string.reminder_snooze, spec.snoozeMinutes)
-                    setTextColor(COLOR_TEXT)
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-                    gravity = Gravity.CENTER
-                    setPadding(dp(24), dp(14), dp(24), dp(14))
-                    background = GradientDrawable().apply {
-                        cornerRadius = dp(14).toFloat()
-                        setColor(COLOR_BUTTON_BG)
-                        setStroke(dp(1), COLOR_BUTTON_STROKE)
-                    }
-                    isClickable = true
-                    setOnClickListener { snooze() }
-                },
+                snoozeButton(),
                 LinearLayout.LayoutParams(
                     LayoutParams.WRAP_CONTENT,
                     LayoutParams.WRAP_CONTENT,
                 ).apply { topMargin = dp(12) },
             )
         }
+    }
+
+    /** 横屏紧凑布局：顶部标题行、中间视频、底部进度与延后。 */
+    private fun buildLandscape() {
+        val content = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(12), dp(24), dp(12))
+        }
+        addView(content, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+
+        val top = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        content.addView(top, LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        top.addView(titleView(18f))
+        top.addView(
+            messageView(12f).apply {
+                maxLines = 2
+                setPadding(dp(16), 0, 0, 0)
+            },
+            LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f),
+        )
+
+        playerView.visibility = View.VISIBLE
+        content.addView(
+            playerView,
+            LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f).apply {
+                topMargin = dp(8)
+                bottomMargin = dp(8)
+            },
+        )
+
+        val bottom = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        content.addView(bottom, LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        bottom.addView(
+            hintView,
+            LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f),
+        )
+        if (spec.allowSnooze) {
+            bottom.addView(snoozeButton())
+        }
+    }
+
+    private fun titleView(sizeSp: Float) = TextView(context).apply {
+        text = context.getString(R.string.reminder_title)
+        setTextColor(COLOR_TEXT)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp)
+        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        gravity = Gravity.CENTER
+    }
+
+    private fun messageView(sizeSp: Float) = TextView(context).apply {
+        text = buildMessage()
+        setTextColor(COLOR_MUTED)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp)
+        setLineSpacing(dp(4).toFloat(), 1.2f)
+    }
+
+    private fun snoozeButton() = TextView(context).apply {
+        text = context.getString(R.string.reminder_snooze, spec.snoozeMinutes)
+        setTextColor(COLOR_TEXT)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+        gravity = Gravity.CENTER
+        setPadding(dp(20), dp(10), dp(20), dp(10))
+        background = GradientDrawable().apply {
+            cornerRadius = dp(14).toFloat()
+            setColor(COLOR_BUTTON_BG)
+            setStroke(dp(1), COLOR_BUTTON_STROKE)
+        }
+        isClickable = true
+        setOnClickListener { snooze() }
     }
 
     /** 视图挂到窗口后调用，开始播放。 */

@@ -4,6 +4,7 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.net.Uri
+import android.view.Gravity
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.widget.FrameLayout
@@ -24,6 +25,9 @@ class VideoPlayerView(context: Context) : FrameLayout(context) {
     private var pending: Pair<Source, Int>? = null
     private var attached = false
     private var started = false
+    private var videoWidth = 0
+    private var videoHeight = 0
+    private var resumePositionMs = 0
 
     var onEnded: (() -> Unit)? = null
     var onError: (() -> Unit)? = null
@@ -48,7 +52,9 @@ class VideoPlayerView(context: Context) : FrameLayout(context) {
         })
     }
 
-    fun play(source: Source, volumePercent: Int) {
+    /** [resumePositionMs] 用于布局重建后续播，避免从头播放。 */
+    fun play(source: Source, volumePercent: Int, resumePositionMs: Int = 0) {
+        this.resumePositionMs = resumePositionMs.coerceAtLeast(0)
         pending = source to volumePercent
         if (attached) startPlayback()
     }
@@ -96,7 +102,13 @@ class VideoPlayerView(context: Context) : FrameLayout(context) {
             mediaPlayer.setDisplay(surfaceView.holder)
             mediaPlayer.setOnPreparedListener {
                 started = true
+                if (resumePositionMs > 0) it.seekTo(resumePositionMs)
                 it.start()
+            }
+            mediaPlayer.setOnVideoSizeChangedListener { _, w, h ->
+                videoWidth = w
+                videoHeight = h
+                fitSurface()
             }
             mediaPlayer.setOnCompletionListener { onEnded?.invoke() }
             mediaPlayer.setOnErrorListener { _, _, _ ->
@@ -109,6 +121,34 @@ class VideoPlayerView(context: Context) : FrameLayout(context) {
             mediaPlayer.release()
             onError?.invoke()
         }
+    }
+
+    /**
+     * 按视频真实宽高比居中缩放 SurfaceView。
+     * 不依赖 SCALE_TO_FIT 的拉伸行为，横竖屏都不会变形。
+     */
+    private fun fitSurface() {
+        if (videoWidth <= 0 || videoHeight <= 0) return
+        val containerW = width
+        val containerH = height
+        if (containerW <= 0 || containerH <= 0) return
+        val videoRatio = videoWidth.toFloat() / videoHeight.toFloat()
+        val containerRatio = containerW.toFloat() / containerH.toFloat()
+        val lp = surfaceView.layoutParams as LayoutParams
+        if (videoRatio > containerRatio) {
+            lp.width = containerW
+            lp.height = (containerW / videoRatio).toInt()
+        } else {
+            lp.height = containerH
+            lp.width = (containerH * videoRatio).toInt()
+        }
+        lp.gravity = Gravity.CENTER
+        surfaceView.layoutParams = lp
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        fitSurface()
     }
 
     private fun releasePlayer() {
