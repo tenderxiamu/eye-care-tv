@@ -225,6 +225,8 @@ cd android; .\gradlew :app:testDebugUnitTest
 - 挂机播放视频会被判定为空闲，不计入使用时长
 - Android 上按 Home 键可暂时离开悬浮窗；部分国产 ROM 会清理前台服务，需手动加白名单
 - Android 只累计「亮屏且解锁」的时间，息屏与锁屏期间不计时
+- 若项目目录路径含中文等非 ASCII 字符，Gradle 单元测试 worker 可能报 ClassNotFoundException；
+  把仓库放到纯英文路径即可（构建 APK 不受影响）
 
 ## License
 
