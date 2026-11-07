@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">护眼TV</string>
+    <string name="app_subtitle">到点全屏打断 · 播完自动放行</string>
+
+    <string name="section_permissions">权限</string>
+    <string name="section_settings">提醒设置</string>
+    <string name="section_dnd">免打扰</string>
+
+    <string name="label_enabled">护眼提醒</string>
+    <string name="label_notification_permission">通知权限</string>
+    <string name="label_overlay_permission">悬浮窗权限</string>
+    <string name="label_battery_permission">忽略电池优化</string>
+    <string name="label_interval">提醒间隔</string>
+    <string name="label_volume">提醒音量</string>
+    <string name="label_snooze">延后时长</string>
+    <string name="label_video">自定义视频</string>
+    <string name="label_dnd_enabled">免打扰时段</string>
+    <string name="label_dnd_start">开始时间</string>
+    <string name="label_dnd_end">结束时间</string>
+
+    <string name="btn_grant">去授权</string>
+    <string name="btn_pick_video">选择视频</string>
+    <string name="btn_reset_video">恢复内置</string>
+    <string name="btn_rest_now">立即休息（预览提醒）</string>
+
+    <string name="perm_granted">已授权</string>
+    <string name="perm_notification_missing">未授权，提醒通知可能不显示</string>
+    <string name="perm_overlay_missing">未授权，提醒将降级为通知</string>
+    <string name="perm_battery_missing">未设置，后台可能被系统清理</string>
+    <string name="perm_battery_granted">已忽略限制，后台更稳定</string>
+
+    <string name="rom_hint">国产 ROM 还需在系统管家中允许「自启动 / 后台运行」，否则计时可能被清理。</string>
+    <string name="video_builtin">内置眼保健操视频</string>
+    <string name="video_custom">已使用自定义视频</string>
+    <string name="snooze_fixed">%1$d 分钟 · 仅一次</string>
+
+    <string name="status_disabled">提醒已关闭</string>
+    <string name="status_accumulated">本次已累计使用 %1$d 分钟</string>
+    <string name="status_next">距离下次提醒约 %1$d 分钟</string>
+    <string name="status_start_hint">开启后开始计时，仅统计亮屏且解锁的时间</string>
+    <string name="rest_hint">立即全屏播放眼保健操，播放结束或关闭后重新计时。</string>
+    <string name="footer_hint">建议依次完成：通知权限 → 悬浮窗权限 → 忽略电池优化。</string>
+
+    <string name="toast_video_saved">自定义视频已保存</string>
+    <string name="toast_video_failed">读取视频失败，请换一个文件</string>
+    <string name="toast_service_failed">无法启动提醒服务，请检查权限</string>
+
+    <string name="channel_timer">计时状态</string>
+    <string name="channel_timer_desc">前台服务常驻通知，显示累计使用与剩余时间</string>
+    <string name="channel_reminder">护眼提醒</string>
+    <string name="channel_reminder_desc">到点时的全屏提醒与通知</string>
+
+    <string name="action_rest_now">立即休息</string>
+    <string name="action_grant_overlay">开启悬浮窗权限</string>
+
+    <string name="status_pending">免打扰时段内，时段结束后立即提醒</string>
+    <string name="status_snoozed">已延后，稍后再次提醒</string>
+    <string name="status_reminding">眼保健操进行中</string>
+    <string name="status_paused">屏幕已息屏，计时暂停</string>
+    <string name="status_tracking">剩余 %1$d 分钟 · 已用 %2$d 分钟</string>
+
+    <string name="reminder_window_title">护眼提醒</string>
+    <string name="reminder_title">护眼时间到</string>
+    <string name="reminder_message">您的屏幕使用时长已达 %1$s，来和我一起做眼保健操吧</string>
+    <string name="reminder_message_short">来和我一起做眼保健操吧</string>
+    <string name="reminder_preparing">眼保健操准备中…</string>
+    <string name="reminder_playing">眼保健操进行中 · 剩余 %1$s</string>
+    <string name="reminder_fallback">视频无法播放，请闭眼休息 %1$s</string>
+    <string name="reminder_snooze">%1$d 分钟后再提醒</string>
+    <string name="reminder_notification_text">来和我一起做眼保健操吧</string>
+    <string name="reminder_notification_text_used">屏幕使用已达 %1$s 分钟，来做眼保健操吧</string>
+
+    <string name="duration_hours">%1$d 小时 %2$d 分钟</string>
+    <string name="duration_minutes">%1$d 分钟</string>
+</resources>
