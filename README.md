@@ -1,2 +1,157 @@
-# eye-care-tv
-Windows 护眼提醒工具：累计屏幕使用时间达 30 分钟自动全屏播放眼保健操视频，播放完毕完恢复计时。 支持空闲暂停、指定时段免打扰、护眼提示延迟、托盘常驻与开机自启。使用Python + PySide6实现。
+# 护眼TV · EyeCareTV
+
+**到点就全屏打断你，播完眼保健操自动放行。**
+
+一个 Windows 桌面护眼提醒工具：累计屏幕使用时长达到阈值后，自动全屏播放眼保健操视频，
+播放结束再恢复使用。基于 Python 与 PySide6，界面原生、无浏览器依赖、可离线运行。
+
+![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
+![PySide6](https://img.shields.io/badge/PySide6-6.x-41CD52?logo=qt&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?logo=windows&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Stars](https://img.shields.io/github/stars/tenderxiamu/eye-care-tv?style=social)
+
+![设置界面](docs/settings.png)
+
+## 为什么做这个
+
+常见的护眼工具只弹一个通知，几秒后就被关掉，形同虚设。护眼TV 换了个思路：
+把提醒做成一次**不可跳过的全屏播放**，用真实的眼保健操视频占住屏幕 5 分钟。
+视频播完自动关闭并重新计时，不打扰正常工作节奏。
+
+## 功能
+
+| 能力 | 说明 |
+|---|---|
+| 定时提醒 | 默认 30 分钟，可调 5–180 分钟 |
+| 空闲暂停 | 连续 3 分钟无键盘鼠标输入自动暂停累计，回来继续 |
+| 强制全屏 | 置顶无边框窗口播放视频，屏蔽 Esc 与 Alt+F4，播放期间阻止息屏 |
+| 自动恢复 | 播完关闭窗口、累计清零，重新开始计时 |
+| 失败兜底 | 视频无法播放时降级为 5 分钟闭眼倒计时，流程不会卡死 |
+| 延迟一次 | 可推迟 5 分钟，第二次提醒不再提供该按钮 |
+| 免打扰时段 | 时段内到点先挂起，时段结束立即补弹 |
+| 托盘常驻 | 显示剩余时间，支持立即休息、暂停 30 分钟、开机自启、退出 |
+| 单实例 | 重复启动时第二个进程自动退出，避免计时翻倍 |
+| 自定义视频 | 设置页可选本地视频，自动复制到用户目录，不动内置素材 |
+
+## 快速开始
+
+环境要求：Windows 10/11、Python 3.11 及以上。
+
+```powershell
+git clone https://github.com/tenderxiamu/eye-care-tv.git
+cd eye-care-tv
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\pythonw.exe main.py
+```
+
+也可以直接双击 `run.bat` 启动。
+
+启动后程序驻留系统托盘，不会出现在任务栏。右键托盘图标可以打开设置。
+想立刻看到效果，点托盘菜单里的「立即休息」。
+
+## 工作原理
+
+```mermaid
+flowchart LR
+    A[Win32 空闲检测] --> B[计时状态机]
+    B -->|达到阈值| C[全屏提醒窗]
+    C -->|视频播放结束| D[累计清零]
+    C -->|延迟 5 分钟| B
+    B -->|空闲超阈值| E[暂停累计]
+    E -->|恢复输入| B
+    B -->|免打扰时段| F[挂起提醒]
+    F -->|时段结束| C
+```
+
+核心是 [timer_engine.py](app/core/timer_engine.py) 里的五状态机：
+`计时中 / 暂停 / 挂起 / 提醒 / 延后`。UI 只负责呈现，所有判定逻辑集中在状态机中，
+因此可以脱离界面直接做单元测试。
+
+## 配置
+
+配置保存在 `%APPDATA%\EyeCareTV\config.json`，首次启动自动生成。
+
+| 字段 | 默认值 | 说明 |
+|---|---|---|
+| `remind_minutes` | 30 | 提醒间隔（分钟） |
+| `idle_minutes` | 3 | 空闲暂停阈值（分钟） |
+| `snooze_minutes` | 5 | 延迟时长（分钟） |
+| `volume` | 50 | 提醒音量（0–100） |
+| `video_path` | 空 | 自定义视频路径，空则使用内置视频 |
+| `dnd_enabled` | false | 是否启用免打扰时段 |
+| `dnd_start` / `dnd_end` | 12:00 / 13:00 | 免打扰起止时间，支持跨午夜 |
+| `auto_start` | false | 是否开机自启 |
+
+在设置页选择自定义视频后，文件会被复制到 `%APPDATA%\EyeCareTV\media\`，内置视频不受影响。
+
+## 打包
+
+```powershell
+.venv\Scripts\python.exe -m PyInstaller --noconsole --onedir --name EyeCareTV --add-data "app/resources;app/resources" --clean --noconfirm main.py
+```
+
+产物在 `dist/EyeCareTV/`，约 159 MB。分发时拷贝整个文件夹，双击 `EyeCareTV.exe` 即用，
+目标机器无需安装 Python。
+
+## 测试
+
+```powershell
+.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+覆盖五个场景：到点触发、空闲暂停与恢复、延迟一次、播放完成归零、免打扰挂起。
+测试注入伪造时钟与空闲读数，不依赖真实等待。
+
+## 项目结构
+
+```
+eye-care-tv/
+├─ main.py                    入口：单实例、信号接线、事件循环
+├─ app/
+│  ├─ core/
+│  │  ├─ idle_detector.py     Win32 键鼠空闲检测
+│  │  ├─ timer_engine.py      计时状态机
+│  │  ├─ dnd.py               免打扰时段判断
+│  │  └─ autostart.py         开机自启注册
+│  ├─ ui/
+│  │  ├─ overlay.py           全屏提醒窗与视频播放
+│  │  ├─ settings.py          设置页
+│  │  └─ tray.py              托盘菜单
+│  ├─ storage/config.py       配置读写
+│  └─ resources/              内置眼保健操视频
+├─ tests/                     计时状态机单元测试
+├─ tools/check_idle.py        空闲检测验证脚本
+└─ requirements.txt
+```
+
+## Roadmap
+
+- [x] Windows 客户端（计时、全屏提醒、视频播放、托盘、自启）
+- [ ] Android 客户端（前台服务 + 悬浮窗）
+- [ ] 单文件 exe 打包，进一步压缩体积
+- [ ] 多显示器独立布局与镜像播放
+- [ ] 静音模式与自定义提醒文案
+
+## 贡献
+
+欢迎提 Issue 和 PR。提交前请确保：
+
+```powershell
+.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+全部用例通过。
+
+## 已知限制
+
+- 无法拦截 `Ctrl+Alt+Del`、任务管理器或系统强杀，定位是强力提醒而非防沉迷
+- 独占全屏游戏可能覆盖置顶窗口
+- 挂机播放视频会被判定为空闲，不计入使用时长
+
+## License
+
+[MIT](LICENSE) © 2026 tenderxiamu
+
+![Star History](https://api.star-history.com/svg?repos=tenderxiamu/eye-care-tv&type=Date)
