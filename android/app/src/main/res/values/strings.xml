@@ -128,4 +128,29 @@
     <string name="reminder_skip_holding">继续按住可跳过…</string>
     <string name="audio_mode_title">音频模式</string>
     <string name="audio_mode_tip">只听声音，不看画面</string>
+
+    <!-- Tab 标签 -->
+    <string name="tab_home">首页</string>
+    <string name="tab_settings">设置</string>
+    <string name="tab_report">报告</string>
+
+    <!-- AI 护眼报告 -->
+    <string name="report_title">AI 护眼报告</string>
+    <string name="report_subtitle">AI 基于你的用眼习惯分析并生成个性化建议</string>
+    <string name="report_fatigue_label">当前眼疲劳指数</string>
+    <string name="report_fatigue_good">状态良好</string>
+    <string name="report_fatigue_mild">轻度疲劳</string>
+    <string name="report_fatigue_need_rest">需要休息</string>
+    <string name="report_section_today">今日数据</string>
+    <string name="report_today_breaks">今日打断</string>
+    <string name="report_today_snoozes">今日延迟</string>
+    <string name="report_today_screen">累计用屏</string>
+    <string name="report_value_count">%1$d 次</string>
+    <string name="report_value_minutes">%1$d 分钟</string>
+    <string name="report_section_ai">AI 学习到的节奏</string>
+    <string name="report_best_interval_label">AI 推荐的提醒间隔</string>
+    <string name="report_best_interval">%1$d 分钟（已学习 %2$d 次）</string>
+    <string name="report_best_interval_learning">学习中…（已采集 %1$d 次数据，继续使用后会自动推荐）</string>
+    <string name="report_section_insights">AI 洞察</string>
+    <string name="report_footer">AI 模型根据你的用眼习惯在线学习，使用越多越精准。</string>
 </resources>

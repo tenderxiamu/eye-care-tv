@@ -74,5 +74,7 @@ tasks.named("preBuild").configure { dependsOn(copyBundledVideo) }
 
 dependencies {
     implementation("androidx.core:core-ktx:1.17.0")
+    implementation("androidx.viewpager2:viewpager2:1.1.0")
+    implementation("com.google.android.material:material:1.12.0")
     testImplementation("junit:junit:4.13.2")
 }

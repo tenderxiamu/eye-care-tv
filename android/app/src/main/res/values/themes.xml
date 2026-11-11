@@ -37,8 +37,15 @@
     </style>
 
     <style name="TextValue">
-        <item name="android:textSize">14sp</item>
+        <item name="android:textSize">28sp</item>
         <item name="android:textColor">@color/accent</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextValueMedium">
+        <item name="android:textSize">20sp</item>
+        <item name="android:textColor">@color/accent</item>
+        <item name="android:textStyle">bold</item>
     </style>
 
     <style name="TextMuted">
