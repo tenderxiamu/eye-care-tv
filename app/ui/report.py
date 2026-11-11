@@ -81,12 +81,27 @@ class ReportWindow(QWidget):
         self._smart = smart
         self.setWindowTitle("AI 护眼报告")
         self.setFixedWidth(520)
+        self._layout = QVBoxLayout(self)
+        self._layout.setContentsMargins(24, 24, 24, 24)
+        self._layout.setSpacing(16)
         self._build(accumulated_minutes)
 
+    @staticmethod
+    def _clear_layout(layout) -> None:
+        """清空布局并销毁其中的控件与子布局，用于刷新前重置。"""
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+                continue
+            child = item.layout()
+            if child is not None:
+                ReportWindow._clear_layout(child)
+                child.deleteLater()
+
     def _build(self, accumulated_minutes: float) -> None:
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(16)
+        layout = self._layout
 
         # 标题
         title = QLabel("🧠 AI 护眼报告")
@@ -198,13 +213,8 @@ class ReportWindow(QWidget):
         return card
 
     def show_and_raise(self, accumulated_minutes: float) -> None:
-        # 刷新数据
-        layout = self.layout()
-        # 简单重建：清空后重新构建
-        while layout.count():
-            item = layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+        # 清空旧内容后重新构建，刷新今日数据与疲劳指数
+        self._clear_layout(self._layout)
         self._build(accumulated_minutes)
         self.show()
         self.raise_()

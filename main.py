@@ -83,6 +83,7 @@ def main() -> int:
         accumulated_min = engine.accumulated / 60.0
         if report_window is None:
             report_window = ReportWindow(smart, accumulated_min)
+            report_window.show()
         else:
             report_window.show_and_raise(accumulated_min)
 
