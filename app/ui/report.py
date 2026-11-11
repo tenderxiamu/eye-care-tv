@@ -5,8 +5,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QFont, QPainter, QPen
+from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -18,6 +20,39 @@ from PySide6.QtWidgets import (
 )
 
 from app.core.smart_engine import SmartEngine
+
+
+_RES_DIR = Path(__file__).resolve().parent.parent / "resources"
+
+
+def _title_row(icon_name: str, text: str, font_size: int, bold: bool = True, color: str = "#18181B") -> QHBoxLayout:
+    """构建一个图标 + 文字的标题行，返回 QHBoxLayout。"""
+    layout = QHBoxLayout()
+    layout.setSpacing(8)
+    layout.setContentsMargins(0, 0, 0, 0)
+
+    icon_label = QLabel()
+    pixmap = QPixmap(str(_RES_DIR / f"icon_{icon_name}.png"))
+    if not pixmap.isNull():
+        icon_label.setPixmap(pixmap.scaled(
+            font_size + 8, font_size + 8,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        ))
+    else:
+        icon_label.setText("•")
+    icon_label.setFixedWidth(font_size + 10)
+    icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+    text_label = QLabel(text)
+    text_label.setStyleSheet(
+        f"font-size: {font_size}px; font-weight: {'700' if bold else '400'}; color: {color};"
+    )
+
+    layout.addWidget(icon_label)
+    layout.addWidget(text_label)
+    layout.addStretch(1)
+    return layout
 
 
 def _fatigue_color(score: float) -> str:
@@ -104,9 +139,7 @@ class ReportWindow(QWidget):
         layout = self._layout
 
         # 标题
-        title = QLabel("🧠 AI 护眼报告")
-        title.setStyleSheet("font-size: 22px; font-weight: 700; color: #18181B;")
-        layout.addWidget(title)
+        layout.addLayout(_title_row("monkey", "AI 护眼报告", 22))
 
         # 疲劳指数
         fatigue = self._smart.fatigue_score(accumulated_minutes)
@@ -129,22 +162,18 @@ class ReportWindow(QWidget):
         )
         iv_layout = QVBoxLayout(interval_card)
         iv_layout.setContentsMargins(16, 12, 16, 12)
-        iv_title = QLabel("🎯 AI 学习到的节奏")
-        iv_title.setStyleSheet("font-size: 13px; color: #075985; font-weight: 600;")
+        iv_layout.addLayout(_title_row("snail", "AI 学习到的节奏", 13, bold=True, color="#075985"))
         iv_text = QLabel(
             f"根据你的反馈，最适合你的提醒间隔约为 <b>{stats['best_interval']} 分钟</b>"
             f"（已学习 {stats['fatigue_training_samples']} 次）"
         )
         iv_text.setStyleSheet("font-size: 13px; color: #0C4A6E;")
         iv_text.setWordWrap(True)
-        iv_layout.addWidget(iv_title)
         iv_layout.addWidget(iv_text)
         layout.addWidget(interval_card)
 
         # AI 洞察
-        insights_title = QLabel("💡 AI 洞察")
-        insights_title.setStyleSheet("font-size: 15px; font-weight: 600; color: #18181B; margin-top: 4px;")
-        layout.addWidget(insights_title)
+        layout.addLayout(_title_row("squirrel", "AI 洞察", 15, bold=True, color="#18181B"))
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
