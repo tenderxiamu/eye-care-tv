@@ -98,9 +98,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun refreshAll() {
-        homeFragment.refresh()
-        settingsFragment.refresh()
-        reportFragment.refresh()
+        // ViewPager2 的 Fragment 视图可能尚未创建（onResume 早于首次布局），此时跳过刷新避免 lateinit 崩溃
+        if (homeFragment.isAdded && homeFragment.view != null) homeFragment.refresh()
+        if (settingsFragment.isAdded && settingsFragment.view != null) settingsFragment.refresh()
+        if (reportFragment.isAdded && reportFragment.view != null) reportFragment.refresh()
     }
 
     fun onConfigChanged() { refreshAll() }
