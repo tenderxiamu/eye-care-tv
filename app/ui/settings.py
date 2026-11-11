@@ -24,6 +24,7 @@ from app.storage.config import AppConfig, MEDIA_DIR, save_config
 
 class SettingsWindow(QWidget):
     config_saved = Signal()
+    report_requested = Signal()
 
     def __init__(self, config: AppConfig) -> None:
         super().__init__(None)
@@ -88,7 +89,38 @@ class SettingsWindow(QWidget):
         self._autostart_check = QCheckBox("开机自启")
         form.addRow("", self._autostart_check)
 
+        self._smart_check = QCheckBox("启用 AI 智能护眼（自适应间隔 + 疲劳预测）")
+        self._smart_check.toggled.connect(self._on_smart_toggled)
+        form.addRow("", self._smart_check)
+
+        self._smart_mode_row = QWidget()
+        smart_mode_layout = QHBoxLayout(self._smart_mode_row)
+        smart_mode_layout.setContentsMargins(0, 0, 0, 0)
+        self._smart_fixed = QPushButton("固定间隔")
+        self._smart_fixed.setCheckable(True)
+        self._smart_adaptive = QPushButton("AI 自适应")
+        self._smart_adaptive.setCheckable(True)
+        self._smart_fixed.clicked.connect(lambda: self._set_smart_mode("fixed"))
+        self._smart_adaptive.clicked.connect(lambda: self._set_smart_mode("adaptive"))
+        smart_mode_layout.addWidget(self._smart_fixed)
+        smart_mode_layout.addWidget(self._smart_adaptive)
+        smart_mode_layout.addStretch(1)
+        form.addRow("提醒策略", self._smart_mode_row)
+
         layout.addLayout(form)
+
+        # AI 报告入口
+        report_row = QHBoxLayout()
+        report_row.addStretch(1)
+        self._report_button = QPushButton("📊 查看 AI 护眼报告")
+        self._report_button.setStyleSheet(
+            "QPushButton { background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; "
+            "border-radius: 8px; padding: 8px 16px; font-size: 13px; }"
+            "QPushButton:hover { background: #DBEAFE; }"
+        )
+        report_row.addWidget(self._report_button)
+        layout.addLayout(report_row)
+        self._report_button.clicked.connect(self.report_requested.emit)
 
         hint = QLabel("到达提醒时间后会全屏播放视频，播完后自动恢复计时。")
         hint.setWordWrap(True)
@@ -114,7 +146,19 @@ class SettingsWindow(QWidget):
         self._dnd_start.setTime(QTime.fromString(cfg.dnd_start, "HH:mm"))
         self._dnd_end.setTime(QTime.fromString(cfg.dnd_end, "HH:mm"))
         self._autostart_check.setChecked(cfg.auto_start)
+        self._smart_check.setChecked(cfg.smart_enabled)
+        self._set_smart_mode(cfg.smart_mode)
         self._refresh_video_name()
+
+    def _set_smart_mode(self, mode: str) -> None:
+        self._smart_fixed.setChecked(mode == "fixed")
+        self._smart_adaptive.setChecked(mode == "adaptive")
+        self._smart_mode_row.setEnabled(self._smart_check.isChecked())
+
+    def _on_smart_toggled(self, checked: bool) -> None:
+        self._smart_mode_row.setEnabled(checked)
+        if checked and not self._smart_fixed.isChecked() and not self._smart_adaptive.isChecked():
+            self._smart_adaptive.setChecked(True)
 
     def _refresh_video_name(self) -> None:
         if self._config.video_path:
@@ -151,6 +195,8 @@ class SettingsWindow(QWidget):
         cfg.dnd_start = self._dnd_start.time().toString("HH:mm")
         cfg.dnd_end = self._dnd_end.time().toString("HH:mm")
         cfg.auto_start = self._autostart_check.isChecked()
+        cfg.smart_enabled = self._smart_check.isChecked()
+        cfg.smart_mode = "adaptive" if self._smart_adaptive.isChecked() else "fixed"
         save_config(cfg)
         set_auto_start(cfg.auto_start)
         self.config_saved.emit()

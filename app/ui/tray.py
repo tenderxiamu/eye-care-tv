@@ -5,6 +5,7 @@ from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 from app.core.autostart import set_auto_start
+from app.core.smart_engine import SmartEngine
 from app.core.timer_engine import State, TimerEngine
 from app.storage.config import AppConfig, save_config
 from app.ui.overlay import OverlayManager, format_duration
@@ -33,6 +34,7 @@ class TrayManager(QObject):
         overlay: OverlayManager,
         settings: SettingsWindow,
         config: AppConfig,
+        smart: SmartEngine | None = None,
     ) -> None:
         super().__init__(app)
         self._app = app
@@ -40,6 +42,7 @@ class TrayManager(QObject):
         self._overlay = overlay
         self._settings = settings
         self._config = config
+        self._smart = smart
 
         self._tray = QSystemTrayIcon(_build_icon(), app)
         self._tray.setToolTip("护眼TV")
@@ -95,6 +98,14 @@ class TrayManager(QObject):
         else:
             self._status_action.setText("已延后，5 分钟后再次提醒")
             self._pause_action.setText("暂停 30 分钟")
+
+        # 更新托盘提示，AI 启用时显示疲劳指数
+        if self._smart is not None and self._config.smart_enabled:
+            accumulated_min = self._engine.accumulated / 60.0
+            score = self._smart.fatigue_score(accumulated_min)
+            self._tray.setToolTip(f"护眼TV · 疲劳指数 {score:.0f}/100")
+        else:
+            self._tray.setToolTip("护眼TV")
 
     def _toggle_pause(self) -> None:
         if self._engine.state == State.PAUSED:

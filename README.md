@@ -6,13 +6,15 @@
 播放结束再恢复使用。Windows 端基于 Python 与 PySide6，Android 端为 Kotlin 原生实现，
 界面原生、无浏览器依赖、可离线运行。
 
+内置 **AI 智能护眼引擎**：基于强化学习（UCB1 多臂老虎机）自适应调整提醒间隔，
+通过在线学习的疲劳预测模型实时评估眼疲劳指数，并生成个性化护眼洞察。
+
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![PySide6](https://img.shields.io/badge/PySide6-6.x-41CD52?logo=qt&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.2-7F52FF?logo=kotlin&logoColor=white)
 ![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows&logoColor=white)
 ![Android](https://img.shields.io/badge/Android-8.0%2B-34A853?logo=android&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Stars](https://img.shields.io/github/stars/tenderxiamu/eye-care-tv?style=social)
 
 ![设置界面](docs/settings.png)
 
@@ -37,6 +39,10 @@
 | 托盘常驻 | 显示剩余时间，支持立即休息、暂停 30 分钟、开机自启、退出 |
 | 单实例 | 重复启动时第二个进程自动退出，避免计时翻倍 |
 | 自定义视频 | 设置页可选本地视频，自动复制到用户目录，不动内置素材 |
+| **AI 疲劳预测** | 基于连续用屏时长、距上次休息、延迟次数、时段、空闲占比等特征，在线学习预测 0-100 疲劳指数 |
+| **AI 自适应间隔** | UCB1 多臂老虎机从你的"完成/延迟"反馈中学习最优提醒间隔，越用越懂你 |
+| **AI 护眼报告** | 今日休息/延迟/用屏统计 + 疲劳仪表盘 + 个性化洞察建议 |
+| **AI 提醒建议** | 提醒弹窗展示根据你用眼习惯生成的个性化建议 |
 
 ## Windows 快速开始
 
@@ -72,6 +78,11 @@ python -m venv .venv
 | 免打扰 | 时段内到点先挂起，时段结束立即补弹 |
 | 开机自启 | 重启后自动恢复计时 |
 | 自定义视频 | 从文件选择器挑视频，复制到应用私有目录，不动内置素材 |
+| 应用白名单 | 勾选的应用在前台时不打断，切出后再补弹（需「使用情况访问」权限） |
+| 纯音频模式 | 只听声音不看画面，适合办公室；默认仍为视频模式 |
+| 紧急跳过 | 提醒页长按 3 秒跳过本次，应对抢票、看急救信息等场景 |
+| 护眼统计 | 今日/本周打断次数与累计观看时长，仅在本地存储 |
+| 首次引导 | 三步授权向导，按机型给出华为/小米/OPPO/vivo 的保活路径 |
 
 <p>
   <img src="docs/android-settings.png" width="45%" />
@@ -106,6 +117,30 @@ Git 仓库里只存一份。
 见 [TimerEngine.kt](android/app/src/main/java/com/tenderxiamu/eyecaretv/TimerEngine.kt)，
 纯 JVM 逻辑，可脱离 Android 框架做单元测试。
 
+## 两端能力对照
+
+两端不是逐项镜像，而是围绕同一套核心机制做端侧适配。
+
+**共通机制**
+
+- 到点全屏打断、播完自动放行，只累计真实使用时间（Windows 键鼠空闲自动暂停 / Android 息屏锁屏自动暂停）
+- 五状态机：计时中 / 暂停 / 挂起 / 提醒 / 延后
+- 延迟 5 分钟且仅一次、免打扰时段挂起后补弹、视频异常降级为 5 分钟闭眼倒计时、自定义视频、开机自启
+
+**平台专属**
+
+| 能力 | Windows | Android |
+|---|---|---|
+| 常驻形态 | 系统托盘显示剩余时间 | 前台服务 + 通知栏显示剩余时间 |
+| 打断方式 | 置顶无边框窗口，屏蔽 Esc 与 Alt+F4 | `TYPE_APPLICATION_OVERLAY` 悬浮窗，覆盖任意应用 |
+| 场景避让 | 键鼠连续空闲自动暂停 | 应用白名单延后提醒 + 纯音频模式 |
+| 逃生通道 | 无专用通道（可延迟一次） | 长按 3 秒跳过本次 |
+| 数据沉淀 | AI 疲劳预测、自适应间隔、护眼报告与个性化洞察 | 今日/本周打断次数与累计观看时长 |
+| 上手引导 | 设置页逐项说明 | 首启三步授权向导 + 国产 ROM 保活路径 |
+
+差异来自系统能力边界：Windows 能拿到全局键鼠空闲状态、进程可长期驻留，所以避让可以做到「人不在就暂停」；
+Android 需要前台服务、悬浮窗和使用情况访问权限才能维持计时与覆盖显示，因此避让只能基于「当前前台应用」。
+
 ## 工作原理（Windows）
 
 ```mermaid
@@ -138,8 +173,65 @@ flowchart LR
 | `dnd_enabled` | false | 是否启用免打扰时段 |
 | `dnd_start` / `dnd_end` | 12:00 / 13:00 | 免打扰起止时间，支持跨午夜 |
 | `auto_start` | false | 是否开机自启 |
+| `smart_enabled` | true | 启用 AI 智能护眼（疲劳预测 + 自适应间隔 + 洞察） |
+| `smart_mode` | "adaptive" | 提醒策略："fixed" 固定间隔 / "adaptive" AI 自适应 |
 
 在设置页选择自定义视频后，文件会被复制到 `%APPDATA%\EyeCareTV\media\`，内置视频不受影响。
+
+## AI 智能护眼引擎
+
+所有 AI 逻辑集中在 [app/core/smart_engine.py](app/core/smart_engine.py)，纯 Python 实现、无第三方依赖，
+可离线运行、可单元测试。包含三个核心组件：
+
+```mermaid
+flowchart LR
+    A[每秒心跳] --> B[会话追踪器<br/>累计活跃/空闲时间]
+    B --> C[疲劳预测模型<br/>在线学习权重]
+    B --> D[UCB1 老虎机<br/>自适应间隔]
+    C --> E[疲劳指数 0-100]
+    D --> F[建议提醒间隔]
+    G[用户反馈<br/>完成/延迟] --> C
+    G --> D
+    C --> H[个性化洞察]
+```
+
+### 1. 疲劳预测模型（在线学习）
+
+基于 5 个特征预测 0-100 的眼疲劳指数：
+
+| 特征 | 说明 |
+|---|---|
+| 连续屏幕时长 | 本次累计未休息的用屏分钟数 |
+| 距上次休息 | 距离上次完整休息的时长 |
+| 延迟连击 | 连续被延迟的次数 |
+| 时段因子 | 22:00-06:00 最高，午后次之 |
+| 空闲占比 | 近期空闲时间比例（越低越累） |
+
+模型权重随用户反馈**在线更新**（梯度下降式）：
+- 延迟提醒 → 说明疲劳被高估，下调相关特征权重
+- 完整看完 → 说明时机合适，权重向默认值轻微收敛
+
+### 2. 自适应间隔优化器（UCB1 多臂老虎机）
+
+候选间隔为 `[20, 25, 30, 35, 40, 45, 50, 60]` 分钟，每次提醒完成后：
+- 完整看完 → 奖励 +1.0
+- 被延迟 → 奖励 -0.3
+
+使用 **UCB1（Upper Confidence Bound）** 算法在"探索新间隔"和"利用已知好间隔"之间平衡，
+逐步学到最适合该用户的提醒节奏。数据不足 3 次时保持用户设置，避免初期乱调。
+
+### 3. 个性化洞察生成器
+
+聚合最近 30 条使用记录，自动生成洞察，例如：
+- 延迟率过高 → 提示当前间隔可能偏短
+- 识别用眼高峰时段
+- 工作日 vs 周末用屏差异
+- 深夜用眼提醒
+
+### 数据持久化
+
+- 使用记录：`%APPDATA%\EyeCareTV\usage.jsonl`（追加式，每次提醒一条）
+- 模型状态：`%APPDATA%\EyeCareTV\smart_model.json`（权重 + 老虎机统计）
 
 ## 打包
 
@@ -161,6 +253,13 @@ Windows：
 覆盖五个场景：到点触发、空闲暂停与恢复、延迟一次、播放完成归零、免打扰挂起。
 测试注入伪造时钟与空闲读数，不依赖真实等待。
 
+AI 引擎测试（`tests/test_smart_engine.py`，25 个用例）：
+- 疲劳模型：预测范围、高低疲劳对比、在线学习权重更新、序列化
+- UCB1 老虎机：未尝试臂优先、奖励统计、最优间隔选择、探索-利用平衡
+- 使用存储：追加/读取/截断/清空
+- 洞察生成：无数据、高延迟率、高峰时段、深夜使用
+- 智能引擎端到端：完成流程、延迟流程、持久化跨实例恢复
+
 Android：
 
 ```powershell
@@ -179,10 +278,12 @@ eye-care-tv/
 │  ├─ core/
 │  │  ├─ idle_detector.py     Win32 键鼠空闲检测
 │  │  ├─ timer_engine.py      计时状态机
+│  │  ├─ smart_engine.py      AI 智能护眼引擎（疲劳预测+UCB1+洞察）
 │  │  ├─ dnd.py               免打扰时段判断
 │  │  └─ autostart.py         开机自启注册
 │  ├─ ui/
 │  │  ├─ overlay.py           全屏提醒窗与视频播放
+│  │  ├─ report.py            AI 护眼报告对话框
 │  │  ├─ settings.py          设置页
 │  │  └─ tray.py              托盘菜单
 │  ├─ storage/config.py       配置读写

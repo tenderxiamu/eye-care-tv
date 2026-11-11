@@ -21,6 +21,7 @@ class TimerEngine(QObject):
     usage_changed = Signal(float)
     remind_requested = Signal(float, bool)
     state_changed = Signal(str)
+    tick_detail = Signal(float, float)  # (active_seconds, idle_seconds)
 
     def __init__(
         self,
@@ -102,28 +103,42 @@ class TimerEngine(QObject):
         # 休眠唤醒后可能出现巨大的时间差，钳制避免一次性跳过
         delta = min(delta, 2.0)
 
+        active = 0.0
+        idle = 0.0
+
         if self._state == State.TRACKING:
             if self._idle_provider() >= self._config.idle_seconds:
+                idle = delta
                 self._set_state(State.PAUSED)
+                self.tick_detail.emit(active, idle)
                 return
+            active = delta
             self._accumulated += delta
             self.usage_changed.emit(self._accumulated)
             if self._accumulated >= self._config.remind_seconds:
                 self._trigger()
         elif self._state == State.PAUSED:
+            idle = delta
             if self._paused_until:
                 if now >= self._paused_until:
                     self._paused_until = 0.0
                     self._set_state(State.TRACKING)
+                self.tick_detail.emit(active, idle)
                 return
             if self._idle_provider() < self._config.idle_seconds:
                 self._set_state(State.TRACKING)
         elif self._state == State.PENDING:
+            idle = delta
             if not self._is_dnd():
                 self._trigger()
         elif self._state == State.SNOOZED:
+            idle = delta
             if now >= self._snooze_deadline:
                 self._trigger()
+        elif self._state == State.REMINDING:
+            idle = delta
+
+        self.tick_detail.emit(active, idle)
 
     # ---- 内部 ----
     def _is_dnd(self) -> bool:

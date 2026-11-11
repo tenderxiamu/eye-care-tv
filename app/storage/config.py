@@ -23,6 +23,8 @@ class AppConfig:
     dnd_start: str = "12:00"
     dnd_end: str = "13:00"
     auto_start: bool = False
+    smart_enabled: bool = True
+    smart_mode: str = "adaptive"  # "fixed" 或 "adaptive"
 
     @property
     def remind_seconds(self) -> float:

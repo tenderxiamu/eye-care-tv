@@ -9,9 +9,11 @@ from pathlib import Path
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QSystemTrayIcon
 
+from app.core.smart_engine import SmartEngine
 from app.core.timer_engine import TimerEngine
-from app.storage.config import load_config
+from app.storage.config import load_config, save_config
 from app.ui.overlay import OverlayManager
+from app.ui.report import ReportWindow
 from app.ui.settings import SettingsWindow
 from app.ui.tray import TrayManager
 
@@ -71,7 +73,18 @@ def main() -> int:
     engine = TimerEngine(config)
     overlay = OverlayManager(config)
     settings = SettingsWindow(config)
-    tray = TrayManager(app, engine, overlay, settings, config)
+    smart = SmartEngine()
+    tray = TrayManager(app, engine, overlay, settings, config, smart)
+
+    report_window: ReportWindow | None = None
+
+    def show_report() -> None:
+        nonlocal report_window
+        accumulated_min = engine.accumulated / 60.0
+        if report_window is None:
+            report_window = ReportWindow(smart, accumulated_min)
+        else:
+            report_window.show_and_raise(accumulated_min)
 
     def on_config_saved() -> None:
         overlay.update_config(config)
@@ -83,10 +96,39 @@ def main() -> int:
             client.disconnectFromServer()
         settings.show_and_raise()
 
-    engine.remind_requested.connect(overlay.show_reminder)
-    overlay.finished.connect(engine.reminder_finished)
-    overlay.snoozed.connect(lambda: engine.snooze())
+    # ---- AI 引擎信号接线 ----
+    # 每秒心跳：累计活跃/空闲时间
+    engine.tick_detail.connect(smart.record_tick)
+
+    def on_reminder_triggered(accumulated: float, allow_snooze: bool) -> None:
+        smart.on_reminder_triggered(accumulated / 60.0)
+        # 生成个性化建议
+        tip = ""
+        if config.smart_enabled:
+            insights = smart.insights()
+            if insights:
+                tip = insights[0]
+        overlay.show_reminder(accumulated, allow_snooze, tip)
+
+    def on_snoozed() -> None:
+        smart.on_snooze()
+        engine.snooze()
+
+    def on_finished() -> None:
+        smart.on_completed(config.remind_minutes)
+        engine.reminder_finished()
+        # 自适应模式：根据学习结果更新提醒间隔
+        if config.smart_enabled and config.smart_mode == "adaptive":
+            suggested = smart.suggested_interval(config.remind_minutes)
+            if suggested != config.remind_minutes:
+                config.remind_minutes = suggested
+                save_config(config)
+
+    engine.remind_requested.connect(on_reminder_triggered)
+    overlay.snoozed.connect(on_snoozed)
+    overlay.finished.connect(on_finished)
     settings.config_saved.connect(on_config_saved)
+    settings.report_requested.connect(show_report)
     server.newConnection.connect(on_new_connection)
 
     if not QSystemTrayIcon.isSystemTrayAvailable():

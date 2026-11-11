@@ -129,7 +129,7 @@ class OverlayWindow(QWidget):
         button_row.addWidget(self._snooze_button)
         layout.addLayout(button_row)
 
-    def start(self, seconds: float, allow_snooze: bool) -> None:
+    def start(self, seconds: float, allow_snooze: bool, tip: str = "") -> None:
         if seconds >= 60:
             text = (
                 f"护眼时间到，您的屏幕使用时长已达 {format_duration(seconds)}，"
@@ -138,11 +138,14 @@ class OverlayWindow(QWidget):
         else:
             text = "护眼时间到，来和我一起做眼保健操吧"
         self._title.setText(text)
+        if tip:
+            self._hint.setText(f"💡 {tip}")
         self._snooze_button.setVisible(allow_snooze)
         if self._with_video:
             self._start_video()
         else:
-            self._hint.setText("眼保健操进行中，请稍候")
+            if not tip:
+                self._hint.setText("眼保健操进行中，请稍候")
         self.showFullScreen()
 
     def _start_video(self) -> None:
@@ -246,7 +249,7 @@ class OverlayManager(QObject):
             return chosen
         return resource_video_path()
 
-    def show_reminder(self, seconds: float, allow_snooze: bool) -> None:
+    def show_reminder(self, seconds: float, allow_snooze: bool, tip: str = "") -> None:
         if self._active:
             return
         self._active = True
@@ -260,7 +263,7 @@ class OverlayManager(QObject):
                 self._config.volume,
                 with_video=screen is primary,
             )
-            window.start(seconds, allow_snooze)
+            window.start(seconds, allow_snooze, tip if screen is primary else "")
             if screen is primary:
                 window.finished.connect(self._on_finished)
                 window.snoozed.connect(self._on_snoozed)
