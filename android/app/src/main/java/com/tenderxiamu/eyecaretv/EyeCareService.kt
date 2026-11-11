@@ -33,12 +33,15 @@ class EyeCareService : Service() {
 
     private lateinit var store: ConfigStore
     private lateinit var engine: TimerEngine
+    private lateinit var statsStore: StatsStore
     private lateinit var windowManager: WindowManager
     private lateinit var powerManager: android.os.PowerManager
     private lateinit var keyguardManager: android.app.KeyguardManager
 
     private var reminderView: ReminderView? = null
     private var screenOn = true
+    /** 到点时白名单应用在前台，先挂起，切出后再补弹。 */
+    private var deferredUntilForeground = false
     private val handler = Handler(Looper.getMainLooper())
 
     private val ticker = object : Runnable {
@@ -68,6 +71,7 @@ class EyeCareService : Service() {
     override fun onCreate() {
         super.onCreate()
         store = ConfigStore(this)
+        statsStore = StatsStore(this)
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         powerManager = getSystemService(POWER_SERVICE) as android.os.PowerManager
         keyguardManager = getSystemService(KEYGUARD_SERVICE) as android.app.KeyguardManager
@@ -125,12 +129,30 @@ class EyeCareService : Service() {
         val active = screenOn && powerManager.isInteractive && !keyguardManager.isKeyguardLocked
         val remind = engine.tick(active, config)
         persist()
-        if (remind && reminderView == null) showReminder(config)
+        if (remind) {
+            if (isWhitelistedForeground()) {
+                deferredUntilForeground = true
+            } else {
+                showReminder(config)
+            }
+        } else if (deferredUntilForeground && !isWhitelistedForeground()) {
+            deferredUntilForeground = false
+            if (reminderView == null) showReminder(config)
+        }
         notifyTimer(config)
+    }
+
+    /** 白名单应用在前台时，到点先不打扰，等用户切出该应用再补弹。 */
+    private fun isWhitelistedForeground(): Boolean {
+        val whitelist = store.whitelist
+        if (whitelist.isEmpty()) return false
+        val foreground = AppWhitelist.foregroundPackage(this) ?: return false
+        return whitelist.contains(foreground)
     }
 
     private fun forceRemind() {
         if (reminderView != null) return
+        deferredUntilForeground = false
         engine.forceRemind()
         persist()
         showReminder(store.toConfig())
@@ -152,13 +174,14 @@ class EyeCareService : Service() {
             snoozeMinutes = config.snoozeMinutes,
             volume = store.volume,
             customVideoPath = store.videoPath,
+            audioOnly = store.audioOnly,
         )
         if (!Settings.canDrawOverlays(this)) {
             showFallbackNotification(spec)
             return
         }
         val view = ReminderView(this, spec).apply {
-            onFinished = { finishReminder() }
+            onFinished = { watchedMs -> finishReminder(watchedMs) }
             onSnooze = { snoozeReminder() }
         }
         val params = WindowManager.LayoutParams(
@@ -188,15 +211,18 @@ class EyeCareService : Service() {
         }
     }
 
-    private fun finishReminder() {
+    private fun finishReminder(watchedMs: Long = 0L) {
+        deferredUntilForeground = false
         removeOverlay()
         engine.reminderFinished()
         persist()
+        statsStore.recordBreak(watchedMs)
         cancelReminderNotification()
         notifyTimer(store.toConfig())
     }
 
     private fun snoozeReminder() {
+        deferredUntilForeground = false
         removeOverlay()
         val config = store.toConfig()
         if (engine.snooze(config)) {

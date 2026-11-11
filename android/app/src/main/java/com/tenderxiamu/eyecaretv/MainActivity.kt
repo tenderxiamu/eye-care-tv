@@ -2,6 +2,7 @@ package com.tenderxiamu.eyecaretv
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.app.TimePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -10,6 +11,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
+import android.view.View
 import android.widget.SeekBar
 import android.widget.Switch
 import android.widget.TextView
@@ -24,17 +26,23 @@ class MainActivity : Activity() {
 
     private lateinit var switchEnabled: Switch
     private lateinit var switchDnd: Switch
+    private lateinit var switchAudio: Switch
+    private lateinit var ringProgress: RingProgressView
     private lateinit var textStatus: TextView
     private lateinit var textNext: TextView
     private lateinit var textPermNotification: TextView
     private lateinit var textPermOverlay: TextView
     private lateinit var textPermBattery: TextView
     private lateinit var textInterval: TextView
-    private lateinit var seekInterval: SeekBar
+    private lateinit var seekInterval: BubbleSeekBar
     private lateinit var textVolume: TextView
-    private lateinit var seekVolume: SeekBar
+    private lateinit var seekVolume: BubbleSeekBar
     private lateinit var textSnooze: TextView
     private lateinit var textVideo: TextView
+    private lateinit var textWhitelist: TextView
+    private lateinit var textStatToday: TextView
+    private lateinit var textStatWeek: TextView
+    private lateinit var textStatWatch: TextView
     private lateinit var textDndStart: TextView
     private lateinit var textDndEnd: TextView
 
@@ -48,6 +56,7 @@ class MainActivity : Activity() {
         setupSettings()
         setupPermissions()
         setupActions()
+        maybeShowOnboarding()
     }
 
     override fun onResume() {
@@ -62,6 +71,8 @@ class MainActivity : Activity() {
     private fun bindViews() {
         switchEnabled = findViewById(R.id.switch_enabled)
         switchDnd = findViewById(R.id.switch_dnd)
+        switchAudio = findViewById(R.id.switch_audio)
+        ringProgress = findViewById(R.id.ring_progress)
         textStatus = findViewById(R.id.text_status)
         textNext = findViewById(R.id.text_next)
         textPermNotification = findViewById(R.id.text_perm_notification)
@@ -73,6 +84,10 @@ class MainActivity : Activity() {
         seekVolume = findViewById(R.id.seek_volume)
         textSnooze = findViewById(R.id.text_snooze)
         textVideo = findViewById(R.id.text_video)
+        textWhitelist = findViewById(R.id.text_whitelist)
+        textStatToday = findViewById(R.id.text_stat_today)
+        textStatWeek = findViewById(R.id.text_stat_week)
+        textStatWatch = findViewById(R.id.text_stat_watch)
         textDndStart = findViewById(R.id.text_dnd_start)
         textDndEnd = findViewById(R.id.text_dnd_end)
     }
@@ -96,7 +111,11 @@ class MainActivity : Activity() {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 val minutes = ConfigStore.MIN_INTERVAL + progress * STEP_MINUTES
                 textInterval.text = getString(R.string.duration_minutes, minutes)
-                if (fromUser) store.intervalMinutes = minutes
+                if (fromUser) {
+                    store.intervalMinutes = minutes
+                    // 拖动时环形进度实时跟随，避免松手才刷新
+                    refreshStatus()
+                }
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
@@ -106,7 +125,12 @@ class MainActivity : Activity() {
             }
         })
 
+        seekInterval.labelProvider = { progress ->
+            getString(R.string.duration_minutes, ConfigStore.MIN_INTERVAL + progress * STEP_MINUTES)
+        }
+
         seekVolume.progress = store.volume
+        seekVolume.labelProvider = { progress -> "$progress%" }
         seekVolume.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 textVolume.text = "$progress%"
@@ -129,6 +153,15 @@ class MainActivity : Activity() {
             pickTime(store.dndEnd) { store.dndEnd = it; refresh() }
         }
 
+        switchAudio.setOnCheckedChangeListener { _, checked ->
+            store.audioOnly = checked
+        }
+
+        findViewById<View>(R.id.row_whitelist).setOnClickListener {
+            startActivity(Intent(this, WhitelistActivity::class.java))
+        }
+        findViewById<View>(R.id.row_rom_guide).setOnClickListener { showRomGuide() }
+
         findViewById<TextView>(R.id.btn_pick_video).setOnClickListener { pickVideo() }
         findViewById<TextView>(R.id.btn_reset_video).setOnClickListener {
             store.videoPath = ""
@@ -139,14 +172,7 @@ class MainActivity : Activity() {
 
     private fun setupPermissions() {
         findViewById<TextView>(R.id.btn_perm_notification).setOnClickListener {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
-                PackageManager.PERMISSION_GRANTED
-            ) {
-                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQUEST_NOTIFICATIONS)
-            } else {
-                openNotificationSettings()
-            }
+            requestNotificationPermission()
         }
 
         findViewById<TextView>(R.id.btn_perm_overlay).setOnClickListener {
@@ -158,21 +184,116 @@ class MainActivity : Activity() {
         }
 
         findViewById<TextView>(R.id.btn_perm_battery).setOnClickListener {
-            val intent = Intent(
-                Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-                Uri.parse("package:$packageName"),
-            )
-            runCatching { startActivity(intent) }
-                .onFailure { openSafely(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
+            openBatterySettings()
         }
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQUEST_NOTIFICATIONS)
+        } else {
+            openNotificationSettings()
+        }
+    }
+
+    private fun openBatterySettings() {
+        val intent = Intent(
+            Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+            Uri.parse("package:$packageName"),
+        )
+        runCatching { startActivity(intent) }
+            .onFailure { openSafely(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
     }
 
     private fun setupActions() {
         findViewById<TextView>(R.id.btn_rest_now).setOnClickListener {
-            runCatching { EyeCareService.forceRemind(this) }
-                .onFailure { toast(getString(R.string.toast_service_failed)) }
+            AlertDialog.Builder(this)
+                .setTitle(R.string.confirm_rest_title)
+                .setMessage(R.string.confirm_rest_message)
+                .setPositiveButton(R.string.btn_confirm) { _, _ ->
+                    runCatching { EyeCareService.forceRemind(this) }
+                        .onFailure { toast(getString(R.string.toast_service_failed)) }
+                }
+                .setNegativeButton(R.string.btn_cancel, null)
+                .show()
         }
     }
+
+    /** 首次启动的三步授权向导，逐项跳转系统设置。 */
+    private fun maybeShowOnboarding() {
+        if (store.onboardingDone) return
+        val steps = listOf(
+            OnboardingStep(
+                getString(R.string.label_notification_permission),
+                getString(R.string.onboarding_notification_desc),
+            ) { requestNotificationPermission() },
+            OnboardingStep(
+                getString(R.string.label_overlay_permission),
+                getString(R.string.onboarding_overlay_desc),
+            ) {
+                openSafely(
+                    Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:$packageName"),
+                    ),
+                )
+            },
+            OnboardingStep(
+                getString(R.string.label_battery_permission),
+                getString(R.string.onboarding_battery_desc),
+            ) { openBatterySettings() },
+        )
+        showOnboardingStep(steps, 0)
+    }
+
+    private fun showOnboardingStep(steps: List<OnboardingStep>, index: Int) {
+        if (index >= steps.size) {
+            store.onboardingDone = true
+            refreshPermissions()
+            return
+        }
+        val step = steps[index]
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.onboarding_title, index + 1, steps.size, step.title))
+            .setMessage(step.description)
+            .setCancelable(false)
+            .setPositiveButton(
+                if (index == steps.lastIndex) R.string.onboarding_finish else R.string.btn_settings,
+            ) { _, _ ->
+                step.action()
+                showOnboardingStep(steps, index + 1)
+            }
+            .setNegativeButton(R.string.btn_skip) { _, _ ->
+                showOnboardingStep(steps, index + 1)
+            }
+            .show()
+    }
+
+    private fun showRomGuide() {
+        val brand = Build.MANUFACTURER.lowercase()
+        val text = when {
+            brand.contains("xiaomi") || brand.contains("redmi") -> R.string.rom_guide_xiaomi
+            brand.contains("huawei") || brand.contains("honor") -> R.string.rom_guide_huawei
+            brand.contains("oppo") || brand.contains("realme") || brand.contains("oneplus") ->
+                R.string.rom_guide_oppo
+            brand.contains("vivo") || brand.contains("iqoo") -> R.string.rom_guide_vivo
+            else -> R.string.rom_guide_generic
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.rom_guide_title)
+            .setMessage(getString(text))
+            .setPositiveButton(R.string.btn_ok, null)
+            .show()
+    }
+
+    private data class OnboardingStep(
+        val title: String,
+        val description: String,
+        val action: () -> Unit,
+    )
 
     private fun refresh() {
         suppressEnabledListener = true
@@ -180,6 +301,7 @@ class MainActivity : Activity() {
         suppressEnabledListener = false
 
         switchDnd.isChecked = store.dndEnabled
+        switchAudio.isChecked = store.audioOnly
         textInterval.text = getString(R.string.duration_minutes, store.intervalMinutes)
         seekInterval.progress = (store.intervalMinutes - ConfigStore.MIN_INTERVAL) / STEP_MINUTES
         textVolume.text = "${store.volume}%"
@@ -192,21 +314,51 @@ class MainActivity : Activity() {
         refreshPermissions()
         refreshVideo()
         refreshDnd()
+        refreshWhitelist()
+        refreshStats()
     }
 
     private fun refreshStatus() {
         if (!store.enabled) {
             textStatus.text = getString(R.string.status_disabled)
             textNext.text = getString(R.string.status_start_hint)
+            ringProgress.progress = 0f
+            ringProgress.valueText = "—"
+            ringProgress.unitText = getString(R.string.ring_disabled)
             return
         }
         val accumulatedMinutes = store.accumulatedMs / 60_000L
         textStatus.text = getString(R.string.status_accumulated, accumulatedMinutes)
         val config = store.toConfig()
         val remaining = (config.intervalMs - store.accumulatedMs).coerceAtLeast(0L)
-        textNext.text = getString(
-            R.string.status_next,
-            ceil(remaining / 60_000.0).toInt(),
+        val remainingMinutes = ceil(remaining / 60_000.0).toInt()
+        textNext.text = getString(R.string.status_next, remainingMinutes)
+
+        ringProgress.progress = if (config.intervalMs > 0) {
+            (store.accumulatedMs.toFloat() / config.intervalMs).coerceIn(0f, 1f)
+        } else {
+            0f
+        }
+        ringProgress.valueText = remainingMinutes.toString()
+        ringProgress.unitText = getString(R.string.ring_unit)
+    }
+
+    private fun refreshWhitelist() {
+        val count = store.whitelist.size
+        textWhitelist.text = if (count == 0) {
+            getString(R.string.whitelist_value_empty)
+        } else {
+            getString(R.string.whitelist_value_count, count)
+        }
+    }
+
+    private fun refreshStats() {
+        val snapshot = StatsStore(this).snapshot()
+        textStatToday.text = getString(R.string.stats_value, snapshot.todayBreaks)
+        textStatWeek.text = getString(R.string.stats_value, snapshot.weekBreaks)
+        textStatWatch.text = getString(
+            R.string.stats_watch,
+            (snapshot.weekWatchMs / 60_000L).toInt(),
         )
     }
 

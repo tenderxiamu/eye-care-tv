@@ -28,6 +28,7 @@ class VideoPlayerView(context: Context) : FrameLayout(context) {
     private var videoWidth = 0
     private var videoHeight = 0
     private var resumePositionMs = 0
+    private var audioOnly = false
 
     var onEnded: (() -> Unit)? = null
     var onError: (() -> Unit)? = null
@@ -40,23 +41,33 @@ class VideoPlayerView(context: Context) : FrameLayout(context) {
         surfaceView.holder.addCallback(object : SurfaceHolder.Callback {
             override fun surfaceCreated(holder: SurfaceHolder) {
                 attached = true
-                startPlayback()
+                if (player == null) startPlayback()
             }
 
             override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) = Unit
 
             override fun surfaceDestroyed(holder: SurfaceHolder) {
                 attached = false
-                releasePlayer()
+                // 纯音频模式不依赖画面，surface 销毁后继续播放声音
+                if (!audioOnly) releasePlayer()
             }
         })
     }
 
-    /** [resumePositionMs] 用于布局重建后续播，避免从头播放。 */
-    fun play(source: Source, volumePercent: Int, resumePositionMs: Int = 0) {
+    /**
+     * [resumePositionMs] 用于布局重建后续播，避免从头播放；
+     * [audioOnly] 为 true 时不绑定画面，只播放声音。
+     */
+    fun play(
+        source: Source,
+        volumePercent: Int,
+        resumePositionMs: Int = 0,
+        audioOnly: Boolean = false,
+    ) {
+        this.audioOnly = audioOnly
         this.resumePositionMs = resumePositionMs.coerceAtLeast(0)
         pending = source to volumePercent
-        if (attached) startPlayback()
+        if (attached || audioOnly) startPlayback()
     }
 
     fun isStarted(): Boolean = started
@@ -99,7 +110,7 @@ class VideoPlayerView(context: Context) : FrameLayout(context) {
             val volume = volumePercent.coerceIn(0, 100) / 100f
             mediaPlayer.setVolume(volume, volume)
             mediaPlayer.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT)
-            mediaPlayer.setDisplay(surfaceView.holder)
+            if (!audioOnly) mediaPlayer.setDisplay(surfaceView.holder)
             mediaPlayer.setOnPreparedListener {
                 started = true
                 if (resumePositionMs > 0) it.seekTo(resumePositionMs)

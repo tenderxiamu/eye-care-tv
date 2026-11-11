@@ -10,6 +10,7 @@ import android.os.Looper
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -23,6 +24,7 @@ data class ReminderSpec(
     val snoozeMinutes: Int,
     val volume: Int,
     val customVideoPath: String,
+    val audioOnly: Boolean = false,
 )
 
 /**
@@ -33,7 +35,7 @@ class ReminderView(
     private val spec: ReminderSpec,
 ) : FrameLayout(context) {
 
-    var onFinished: (() -> Unit)? = null
+    var onFinished: ((watchedMs: Long) -> Unit)? = null
     var onSnooze: (() -> Unit)? = null
 
     private val playerView = VideoPlayerView(context)
@@ -48,6 +50,10 @@ class ReminderView(
     private var fallbackMode = false
     private var fallbackLeft = FALLBACK_SECONDS
     private var layoutOrientation = Configuration.ORIENTATION_UNDEFINED
+    private var watchedMs = 0L
+
+    /** 长按 3 秒后跳过本次提醒，给抢票、看急救信息等紧急场景留一条通道。 */
+    private val skipRunnable = Runnable { skipNow() }
 
     private val progressTicker = object : Runnable {
         override fun run() {
@@ -81,7 +87,9 @@ class ReminderView(
         }
         buildContent(orientation)
         if (resumePosition > 0) {
-            resolveSource()?.let { playerView.play(it, spec.volume, resumePosition) }
+            resolveSource()?.let {
+                playerView.play(it, spec.volume, resumePosition, spec.audioOnly)
+            }
         }
     }
 
@@ -108,9 +116,13 @@ class ReminderView(
         content.addView(titleView(28f))
         content.addView(messageView(15f).apply { setPadding(0, dp(12), 0, dp(24)) })
 
-        playerView.visibility = View.VISIBLE
         content.addView(
-            playerView,
+            if (spec.audioOnly) {
+                audioPlaceholder()
+            } else {
+                playerView.visibility = View.VISIBLE
+                playerView
+            },
             LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f),
         )
 
@@ -129,6 +141,14 @@ class ReminderView(
                 ).apply { topMargin = dp(12) },
             )
         }
+
+        content.addView(
+            skipView(),
+            LinearLayout.LayoutParams(
+                LayoutParams.WRAP_CONTENT,
+                LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(14) },
+        )
     }
 
     /** 横屏紧凑布局：顶部标题行、中间视频、底部进度与延后。 */
@@ -152,10 +172,13 @@ class ReminderView(
             },
             LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f),
         )
-
-        playerView.visibility = View.VISIBLE
         content.addView(
-            playerView,
+            if (spec.audioOnly) {
+                audioPlaceholder()
+            } else {
+                playerView.visibility = View.VISIBLE
+                playerView
+            },
             LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f).apply {
                 topMargin = dp(8)
                 bottomMargin = dp(8)
@@ -171,9 +194,34 @@ class ReminderView(
             hintView,
             LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f),
         )
+        bottom.addView(skipView())
         if (spec.allowSnooze) {
             bottom.addView(snoozeButton())
         }
+    }
+
+    /** 纯音频模式下的占位区，避免整屏只剩黑底。 */
+    private fun audioPlaceholder() = LinearLayout(context).apply {
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER
+        addView(
+            TextView(context).apply {
+                text = context.getString(R.string.audio_mode_title)
+                setTextColor(COLOR_ACCENT)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
+                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                gravity = Gravity.CENTER
+            },
+        )
+        addView(
+            TextView(context).apply {
+                text = context.getString(R.string.audio_mode_tip)
+                setTextColor(COLOR_MUTED)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                gravity = Gravity.CENTER
+                setPadding(0, dp(8), 0, 0)
+            },
+        )
     }
 
     private fun titleView(sizeSp: Float) = TextView(context).apply {
@@ -206,6 +254,36 @@ class ReminderView(
         setOnClickListener { snooze() }
     }
 
+    /**
+     * 不显眼的逃生入口：按住 3 秒跳过，松手即取消，
+     * 既能应对紧急情况，也不会导致随手一点就跳过。
+     */
+    private fun skipView() = TextView(context).apply {
+        text = context.getString(R.string.reminder_skip_hint)
+        setTextColor(COLOR_SKIP)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+        gravity = Gravity.CENTER
+        setPadding(dp(10), dp(6), dp(10), dp(6))
+        isClickable = true
+        setOnTouchListener { view, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    (view as TextView).text = context.getString(R.string.reminder_skip_holding)
+                    handler.postDelayed(skipRunnable, SKIP_HOLD_MS)
+                    true
+                }
+
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    handler.removeCallbacks(skipRunnable)
+                    (view as TextView).text = context.getString(R.string.reminder_skip_hint)
+                    true
+                }
+
+                else -> true
+            }
+        }
+    }
+
     /** 视图挂到窗口后调用，开始播放。 */
     fun start() {
         if (startedOnce) return
@@ -217,7 +295,7 @@ class ReminderView(
         } else {
             playerView.onEnded = { finish() }
             playerView.onError = { enterFallback() }
-            playerView.play(source, spec.volume)
+            playerView.play(source, spec.volume, audioOnly = spec.audioOnly)
             handler.postDelayed(progressTicker, 1000)
             handler.postDelayed({
                 if (!finished && !fallbackMode && !playerView.isStarted()) enterFallback()
@@ -282,9 +360,19 @@ class ReminderView(
     private fun finish() {
         if (finished) return
         finished = true
+        watchedMs = if (fallbackMode) {
+            (FALLBACK_SECONDS - fallbackLeft).coerceAtLeast(0).toLong() * 1000L
+        } else {
+            playerView.positionMs().coerceAtLeast(0).toLong()
+        }
         handler.removeCallbacksAndMessages(null)
         playerView.release()
-        onFinished?.invoke()
+        onFinished?.invoke(watchedMs)
+    }
+
+    /** 长按满 3 秒：跳过本次提醒，按已观看时长计入统计。 */
+    private fun skipNow() {
+        finish()
     }
 
     private fun buildMessage(): String {
@@ -334,6 +422,7 @@ class ReminderView(
         private const val RAW_VIDEO_NAME = "default_eye_exercise"
         private const val FALLBACK_SECONDS = 300
         private const val START_TIMEOUT_MS = 8000L
+        private const val SKIP_HOLD_MS = 3000L
 
         private val COLOR_BACKGROUND = Color.parseColor("#060A0B")
         private val COLOR_BACKGROUND_BOTTOM = Color.parseColor("#0D1B1C")
@@ -341,5 +430,7 @@ class ReminderView(
         private val COLOR_MUTED = Color.parseColor("#94A5A8")
         private val COLOR_BUTTON_BG = Color.parseColor("#1C2A2B")
         private val COLOR_BUTTON_STROKE = Color.parseColor("#3A4C4D")
+        private val COLOR_SKIP = Color.parseColor("#5F7173")
+        private val COLOR_ACCENT = Color.parseColor("#6FE3C4")
     }
 }

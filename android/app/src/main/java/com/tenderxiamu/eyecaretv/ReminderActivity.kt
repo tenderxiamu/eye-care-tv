@@ -25,6 +25,7 @@ class ReminderActivity : Activity() {
             snoozeMinutes = store.snoozeMinutes,
             volume = store.volume,
             customVideoPath = store.videoPath,
+            audioOnly = store.audioOnly,
         )
         val view = ReminderView(this, spec).apply {
             onFinished = { close(finished = true) }

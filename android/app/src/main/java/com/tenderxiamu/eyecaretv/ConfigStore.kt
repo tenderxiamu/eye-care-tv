@@ -35,6 +35,21 @@ class ConfigStore(context: Context) {
         get() = prefs.getString(KEY_VIDEO, "") ?: ""
         set(value) = prefs.edit().putString(KEY_VIDEO, value).apply()
 
+    /** true 表示只播放声音不显示画面，适合办公室等公共场合。默认仍为视频模式。 */
+    var audioOnly: Boolean
+        get() = prefs.getBoolean(KEY_AUDIO_ONLY, false)
+        set(value) = prefs.edit().putBoolean(KEY_AUDIO_ONLY, value).apply()
+
+    /** 白名单应用的包名集合，在这些应用内不强制打断。 */
+    var whitelist: Set<String>
+        get() = prefs.getStringSet(KEY_WHITELIST, emptySet()) ?: emptySet()
+        set(value) = prefs.edit().putStringSet(KEY_WHITELIST, HashSet(value)).apply()
+
+    /** 首次启动的授权向导是否已走完。 */
+    var onboardingDone: Boolean
+        get() = prefs.getBoolean(KEY_ONBOARDING_DONE, false)
+        set(value) = prefs.edit().putBoolean(KEY_ONBOARDING_DONE, value).apply()
+
     var dndEnabled: Boolean
         get() = prefs.getBoolean(KEY_DND_ENABLED, false)
         set(value) = prefs.edit().putBoolean(KEY_DND_ENABLED, value).apply()
@@ -83,6 +98,9 @@ class ConfigStore(context: Context) {
         private const val KEY_SNOOZE = "snooze_minutes"
         private const val KEY_VOLUME = "volume"
         private const val KEY_VIDEO = "video_path"
+        private const val KEY_AUDIO_ONLY = "audio_only"
+        private const val KEY_WHITELIST = "whitelist"
+        private const val KEY_ONBOARDING_DONE = "onboarding_done"
         private const val KEY_DND_ENABLED = "dnd_enabled"
         private const val KEY_DND_START = "dnd_start"
         private const val KEY_DND_END = "dnd_end"

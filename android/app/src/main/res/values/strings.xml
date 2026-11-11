@@ -39,7 +39,9 @@
     <string name="status_accumulated">本次已累计使用 %1$d 分钟</string>
     <string name="status_next">距离下次提醒约 %1$d 分钟</string>
     <string name="status_start_hint">开启后开始计时，仅统计亮屏且解锁的时间</string>
-    <string name="rest_hint">立即全屏播放眼保健操，播放结束或关闭后重新计时。</string>
+    <string name="ring_unit">分钟后提醒</string>
+    <string name="ring_disabled">未开启</string>
+    <string name="rest_hint">立即全屏播放眼保健操，播放结束后自动重新计时；紧急时长按「跳过」3 秒可提前结束。</string>
     <string name="footer_hint">建议依次完成：通知权限 → 悬浮窗权限 → 忽略电池优化。</string>
 
     <string name="toast_video_saved">自定义视频已保存</string>
@@ -73,4 +75,57 @@
 
     <string name="duration_hours">%1$d 小时 %2$d 分钟</string>
     <string name="duration_minutes">%1$d 分钟</string>
+
+    <!-- 统计 -->
+    <string name="section_stats">护眼统计</string>
+    <string name="stats_today_breaks">今日打断</string>
+    <string name="stats_week_breaks">本周打断</string>
+    <string name="stats_value">%1$d 次</string>
+    <string name="stats_watch">本周累计护眼 %1$d 分钟</string>
+
+    <!-- 音频模式 -->
+    <string name="label_audio_only">纯音频模式</string>
+    <string name="audio_only_hint">只播声音不显示画面，适合办公室等场合</string>
+
+    <!-- 白名单 -->
+    <string name="label_whitelist">应用白名单</string>
+    <string name="whitelist_value_empty">未设置，所有应用都会打断</string>
+    <string name="whitelist_value_count">已选 %1$d 个应用，在其中不打断</string>
+    <string name="whitelist_title">应用白名单</string>
+    <string name="whitelist_desc">勾选的应用处于前台时，到点不强制打断，等切出该应用后再补弹提醒。</string>
+    <string name="whitelist_usage_granted">使用情况访问已授权</string>
+    <string name="whitelist_usage_missing">需授权「使用情况访问」才能识别前台应用</string>
+    <string name="whitelist_usage_failed">无法打开使用情况访问设置</string>
+    <string name="whitelist_empty">未读取到已安装应用</string>
+    <string name="btn_back">返回</string>
+
+    <!-- 国产 ROM 教程 -->
+    <string name="label_rom_guide">国产 ROM 保活教程</string>
+    <string name="row_chevron">›</string>
+    <string name="rom_guide_title">后台保活设置</string>
+    <string name="rom_guide_xiaomi">小米 / Redmi：设置 → 应用设置 → 应用管理 → 护眼TV → 省电策略选「无限制」；自启动打开；最近任务里下拉应用卡片加锁。</string>
+    <string name="rom_guide_huawei">华为 / 荣耀：设置 → 应用 → 应用启动管理 → 护眼TV 关闭「自动管理」，勾选手动管理三项；手机管家 → 应用启动管理中允许后台活动。</string>
+    <string name="rom_guide_oppo">OPPO / realme / 一加：设置 → 电池 → 应用耗电管理 → 护眼TV 允许「后台运行」「自动启动」「关联启动」；最近任务里锁定应用。</string>
+    <string name="rom_guide_vivo">vivo / iQOO：设置 → 电池 → 后台耗电管理 → 护眼TV 选「允许后台高耗电」；i管家 → 应用管理 → 自启动中打开。</string>
+    <string name="rom_guide_generic">设置 → 电池 → 电池优化 中将护眼TV 设为「不优化」；并在系统管家中允许自启动与后台运行。</string>
+
+    <!-- 确认与引导 -->
+    <string name="confirm_rest_title">现在开始休息？</string>
+    <string name="confirm_rest_message">将立即全屏播放眼保健操，播放结束后自动恢复计时。</string>
+    <string name="btn_confirm">开始</string>
+    <string name="btn_cancel">取消</string>
+    <string name="onboarding_title">第 %1$d/%2$d 步 · %3$s</string>
+    <string name="onboarding_notification_desc">没有通知权限，计时状态与降级提醒都不会显示。若系统未弹出授权框，请到系统设置中手动开启。</string>
+    <string name="onboarding_overlay_desc">悬浮窗权限用于在任意应用之上全屏播放眼保健操。不授权时，提醒会降级为全屏通知页。</string>
+    <string name="onboarding_battery_desc">关闭电池优化可避免系统在后台清理计时服务。国产 ROM 还需在系统管家中允许自启动。</string>
+    <string name="btn_settings">去设置</string>
+    <string name="btn_skip">跳过</string>
+    <string name="onboarding_finish">完成</string>
+    <string name="btn_ok">知道了</string>
+
+    <!-- 提醒页逃生入口 -->
+    <string name="reminder_skip_hint">长按 3 秒跳过</string>
+    <string name="reminder_skip_holding">继续按住可跳过…</string>
+    <string name="audio_mode_title">音频模式</string>
+    <string name="audio_mode_tip">只听声音，不看画面</string>
 </resources>
