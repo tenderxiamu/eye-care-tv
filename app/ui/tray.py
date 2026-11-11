@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6.QtCore import QObject, QTimer, Qt
 from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
@@ -12,7 +14,16 @@ from app.ui.overlay import OverlayManager, format_duration
 from app.ui.settings import SettingsWindow
 
 
+_RES_DIR = Path(__file__).resolve().parent.parent / "resources"
+
+
 def _build_icon() -> QIcon:
+    """优先加载图片资源，不存在时回退到代码绘制的绿色眼睛。"""
+    icon_path = _RES_DIR / "icon_app.png"
+    if icon_path.exists():
+        return QIcon(str(icon_path))
+
+    # 回退：代码绘制（兼容旧版本打包没有 icon_app.png 的情况）
     pixmap = QPixmap(64, 64)
     pixmap.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pixmap)
