@@ -85,8 +85,12 @@ python -m venv .venv
 | 首次引导 | 三步授权向导，按机型给出华为/小米/OPPO/vivo 的保活路径 |
 
 <p>
-  <img src="docs/android-settings.png" width="45%" />
-  <img src="docs/android-reminder.png" width="45%" />
+  <img src="docs/android-home.png" width="30%" />
+  <img src="docs/android-settings.png" width="30%" />
+  <img src="docs/android-report.png" width="30%" />
+</p>
+<p align="center">
+  <img src="docs/android-reminder.png" width="100%" />
 </p>
 
 ### 构建
