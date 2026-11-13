@@ -48,6 +48,8 @@ class SettingsFragment : Fragment() {
         bindViews(view)
         setupSettings(view)
         setupPermissions(view)
+        // 视图创建后立即刷新一次，避免切回本页时权限状态与数值仍是默认值
+        refresh()
     }
 
     private fun bindViews(view: View) {

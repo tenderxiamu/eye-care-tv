@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">护眼TV</string>
-    <string name="app_subtitle">到点全屏打断 · 播完自动放行</string>
+    <string name="app_subtitle">你的护眼监督员</string>
 
     <string name="section_permissions">权限</string>
     <string name="section_settings">提醒设置</string>
@@ -41,7 +41,7 @@
     <string name="status_start_hint">开启后开始计时，仅统计亮屏且解锁的时间</string>
     <string name="ring_unit">分钟后提醒</string>
     <string name="ring_disabled">未开启</string>
-    <string name="rest_hint">立即全屏播放眼保健操，播放结束后自动重新计时；紧急时长按「跳过」3 秒可提前结束。</string>
+    <string name="rest_hint">立即全屏播放眼保健操，播放结束后自动重新计时；长按 3 秒可提前结束。</string>
     <string name="footer_hint">建议依次完成：通知权限 → 悬浮窗权限 → 忽略电池优化。</string>
 
     <string name="toast_video_saved">自定义视频已保存</string>
@@ -85,7 +85,7 @@
 
     <!-- 音频模式 -->
     <string name="label_audio_only">纯音频模式</string>
-    <string name="audio_only_hint">只播声音不显示画面，适合办公室等场合</string>
+    <string name="audio_only_hint">该模式下仅播放声音</string>
 
     <!-- 白名单 -->
     <string name="label_whitelist">应用白名单</string>
@@ -126,8 +126,9 @@
     <!-- 提醒页逃生入口 -->
     <string name="reminder_skip_hint">长按 3 秒跳过</string>
     <string name="reminder_skip_holding">继续按住可跳过…</string>
+    <string name="reminder_skip_countdown">%1$d 秒后跳过…</string>
     <string name="audio_mode_title">音频模式</string>
-    <string name="audio_mode_tip">只听声音，不看画面</string>
+    <string name="audio_mode_tip">当前处于纯音频模式</string>
 
     <!-- Tab 标签 -->
     <string name="tab_home">首页</string>
@@ -136,7 +137,7 @@
 
     <!-- AI 护眼报告 -->
     <string name="report_title">AI 护眼报告</string>
-    <string name="report_subtitle">AI 基于你的用眼习惯分析并生成个性化建议</string>
+    <string name="report_subtitle">基于你的用眼习惯分析生成</string>
     <string name="report_fatigue_label">当前眼疲劳指数</string>
     <string name="report_fatigue_good">状态良好</string>
     <string name="report_fatigue_mild">轻度疲劳</string>

@@ -35,6 +35,8 @@ class HomeFragment : Fragment() {
         bindViews(view)
         setupSettings()
         setupActions(view)
+        // 视图创建后立即刷新一次，避免切回本页时环形进度仍是初始状态
+        refresh()
     }
 
     private fun bindViews(view: View) {

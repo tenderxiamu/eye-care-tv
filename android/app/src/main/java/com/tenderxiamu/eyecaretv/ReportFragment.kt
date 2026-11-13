@@ -39,6 +39,8 @@ class ReportFragment : Fragment() {
         textTodayScreen = view.findViewById(R.id.text_today_screen)
         textBestInterval = view.findViewById(R.id.text_best_interval)
         insightsContainer = view.findViewById(R.id.insights_container)
+        // 视图创建后立即刷新一次，避免切回本页时显示空白/默认值
+        refresh()
     }
 
     fun bindServices(

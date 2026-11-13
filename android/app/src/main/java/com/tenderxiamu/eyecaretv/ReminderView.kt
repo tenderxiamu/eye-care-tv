@@ -55,6 +55,24 @@ class ReminderView(
     /** 长按 3 秒后跳过本次提醒，给抢票、看急救信息等紧急场景留一条通道。 */
     private val skipRunnable = Runnable { skipNow() }
 
+    private var skipLabel: TextView? = null
+    private var holding = false
+    private var holdLeftSeconds = SKIP_HOLD_SECONDS
+
+    /** 按住期间每秒刷新一次倒数文字，让用户确认手势已被识别。 */
+    private val holdTicker = object : Runnable {
+        override fun run() {
+            if (!holding) return
+            holdLeftSeconds -= 1
+            skipLabel?.text = if (holdLeftSeconds > 0) {
+                context.getString(R.string.reminder_skip_countdown, holdLeftSeconds)
+            } else {
+                context.getString(R.string.reminder_skip_holding)
+            }
+            if (holdLeftSeconds > 0) handler.postDelayed(this, 1000L)
+        }
+    }
+
     private val progressTicker = object : Runnable {
         override fun run() {
             if (finished) return
@@ -95,6 +113,8 @@ class ReminderView(
 
     private fun buildContent(orientation: Int) {
         layoutOrientation = orientation
+        holding = false
+        skipLabel = null
         removeAllViews()
         (playerView.parent as? ViewGroup)?.removeView(playerView)
         (hintView.parent as? ViewGroup)?.removeView(hintView)
@@ -257,6 +277,7 @@ class ReminderView(
     /**
      * 不显眼的逃生入口：按住 3 秒跳过，松手即取消，
      * 既能应对紧急情况，也不会导致随手一点就跳过。
+     * 这里只作为文字提示，手势统一由根视图接管，避免只能按住这行小字才生效。
      */
     private fun skipView() = TextView(context).apply {
         text = context.getString(R.string.reminder_skip_hint)
@@ -264,24 +285,35 @@ class ReminderView(
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
         gravity = Gravity.CENTER
         setPadding(dp(10), dp(6), dp(10), dp(6))
-        isClickable = true
-        setOnTouchListener { view, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    (view as TextView).text = context.getString(R.string.reminder_skip_holding)
-                    handler.postDelayed(skipRunnable, SKIP_HOLD_MS)
-                    true
-                }
+        skipLabel = this
+    }
 
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    handler.removeCallbacks(skipRunnable)
-                    (view as TextView).text = context.getString(R.string.reminder_skip_hint)
-                    true
-                }
-
-                else -> true
-            }
+    /** 整屏任意位置按住都计入跳跃手势；子控件（如延后按钮）优先消费点击。 */
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> beginHold()
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> endHold()
         }
+        return true
+    }
+
+    private fun beginHold() {
+        if (finished || holding) return
+        holding = true
+        holdLeftSeconds = SKIP_HOLD_SECONDS
+        skipLabel?.text = context.getString(R.string.reminder_skip_holding)
+        handler.removeCallbacks(skipRunnable)
+        handler.removeCallbacks(holdTicker)
+        handler.postDelayed(skipRunnable, SKIP_HOLD_MS)
+        handler.postDelayed(holdTicker, 1000L)
+    }
+
+    private fun endHold() {
+        if (!holding) return
+        holding = false
+        handler.removeCallbacks(skipRunnable)
+        handler.removeCallbacks(holdTicker)
+        skipLabel?.text = context.getString(R.string.reminder_skip_hint)
     }
 
     /** 视图挂到窗口后调用，开始播放。 */
@@ -372,6 +404,7 @@ class ReminderView(
 
     /** 长按满 3 秒：跳过本次提醒，按已观看时长计入统计。 */
     private fun skipNow() {
+        holding = false
         finish()
     }
 
@@ -422,7 +455,8 @@ class ReminderView(
         private const val RAW_VIDEO_NAME = "default_eye_exercise"
         private const val FALLBACK_SECONDS = 300
         private const val START_TIMEOUT_MS = 8000L
-        private const val SKIP_HOLD_MS = 3000L
+        private const val SKIP_HOLD_SECONDS = 3
+        private const val SKIP_HOLD_MS = SKIP_HOLD_SECONDS * 1000L
 
         private val COLOR_BACKGROUND = Color.parseColor("#060A0B")
         private val COLOR_BACKGROUND_BOTTOM = Color.parseColor("#0D1B1C")
