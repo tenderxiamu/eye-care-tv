@@ -40,6 +40,11 @@ class ConfigStore(context: Context) {
         get() = prefs.getBoolean(KEY_AUDIO_ONLY, false)
         set(value) = prefs.edit().putBoolean(KEY_AUDIO_ONLY, value).apply()
 
+    /** 自定义提醒文案，空字符串表示使用默认文案；其中的 {duration} 会替换为用屏时长。 */
+    var customMessage: String
+        get() = prefs.getString(KEY_CUSTOM_MESSAGE, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_CUSTOM_MESSAGE, value.trim()).apply()
+
     /** 白名单应用的包名集合，在这些应用内不强制打断。 */
     var whitelist: Set<String>
         get() = prefs.getStringSet(KEY_WHITELIST, emptySet()) ?: emptySet()
@@ -99,6 +104,7 @@ class ConfigStore(context: Context) {
         private const val KEY_VOLUME = "volume"
         private const val KEY_VIDEO = "video_path"
         private const val KEY_AUDIO_ONLY = "audio_only"
+        private const val KEY_CUSTOM_MESSAGE = "custom_message"
         private const val KEY_WHITELIST = "whitelist"
         private const val KEY_ONBOARDING_DONE = "onboarding_done"
         private const val KEY_DND_ENABLED = "dnd_enabled"

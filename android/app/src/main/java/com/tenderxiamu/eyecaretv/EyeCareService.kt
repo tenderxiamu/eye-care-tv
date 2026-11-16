@@ -175,6 +175,7 @@ class EyeCareService : Service() {
             volume = store.volume,
             customVideoPath = store.videoPath,
             audioOnly = store.audioOnly,
+            customMessage = store.customMessage,
         )
         if (!Settings.canDrawOverlays(this)) {
             showFallbackNotification(spec)

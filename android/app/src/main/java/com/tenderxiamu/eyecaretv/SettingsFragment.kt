@@ -1,5 +1,6 @@
 package com.tenderxiamu.eyecaretv
 
+import android.app.AlertDialog
 import android.app.TimePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -11,6 +12,7 @@ import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.SeekBar
 import android.widget.Switch
 import android.widget.TextView
@@ -35,6 +37,7 @@ class SettingsFragment : Fragment() {
     private lateinit var seekVolume: BubbleSeekBar
     private lateinit var textSnooze: TextView
     private lateinit var textVideo: TextView
+    private lateinit var textCustomMessage: TextView
     private lateinit var textWhitelist: TextView
     private lateinit var textDndStart: TextView
     private lateinit var textDndEnd: TextView
@@ -62,6 +65,7 @@ class SettingsFragment : Fragment() {
         seekVolume = view.findViewById(R.id.seek_volume)
         textSnooze = view.findViewById(R.id.text_snooze)
         textVideo = view.findViewById(R.id.text_video)
+        textCustomMessage = view.findViewById(R.id.text_custom_message)
         textWhitelist = view.findViewById(R.id.text_whitelist)
         textDndStart = view.findViewById(R.id.text_dnd_start)
         textDndEnd = view.findViewById(R.id.text_dnd_end)
@@ -114,6 +118,9 @@ class SettingsFragment : Fragment() {
             pickTime(store?.dndEnd ?: "13:00") { store?.dndEnd = it; refresh() }
         }
 
+        view.findViewById<View>(R.id.row_custom_message).setOnClickListener {
+            showCustomMessageDialog()
+        }
         view.findViewById<View>(R.id.row_whitelist).setOnClickListener {
             startActivity(Intent(requireContext(), WhitelistActivity::class.java))
         }
@@ -241,6 +248,7 @@ class SettingsFragment : Fragment() {
         textDndEnd.text = s.dndEnd
         refreshPermissions()
         refreshVideo()
+        refreshCustomMessage()
         refreshDnd()
         refreshWhitelist()
     }
@@ -270,6 +278,30 @@ class SettingsFragment : Fragment() {
         )
         view?.findViewById<TextView>(R.id.btn_perm_battery)?.text =
             getString(if (ignoring) R.string.perm_granted else R.string.btn_grant)
+    }
+
+    private fun refreshCustomMessage() {
+        val s = store ?: return
+        textCustomMessage.text =
+            s.customMessage.ifEmpty { getString(R.string.custom_message_default) }
+    }
+
+    private fun showCustomMessageDialog() {
+        val input = EditText(requireContext()).apply {
+            setText(store?.customMessage.orEmpty())
+            hint = getString(R.string.custom_message_hint)
+            setSingleLine(false)
+            maxLines = 3
+        }
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.custom_message_title)
+            .setView(input)
+            .setPositiveButton(R.string.btn_save) { _, _ ->
+                store?.customMessage = input.text.toString()
+                refreshCustomMessage()
+            }
+            .setNegativeButton(R.string.btn_cancel, null)
+            .show()
     }
 
     private fun refreshVideo() {

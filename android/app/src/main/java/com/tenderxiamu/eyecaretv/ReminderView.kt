@@ -25,6 +25,7 @@ data class ReminderSpec(
     val volume: Int,
     val customVideoPath: String,
     val audioOnly: Boolean = false,
+    val customMessage: String = "",
 )
 
 /**
@@ -414,6 +415,9 @@ class ReminderView(
 
     private fun buildMessage(): String {
         val duration = formatDuration(spec.accumulatedMs)
+        if (spec.customMessage.isNotEmpty()) {
+            return spec.customMessage.replace("{duration}", duration ?: "")
+        }
         return if (duration != null) {
             context.getString(R.string.reminder_message, duration)
         } else {

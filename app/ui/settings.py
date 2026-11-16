@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QPushButton,
     QSlider,
     QSpinBox,
@@ -69,6 +70,10 @@ class SettingsWindow(QWidget):
         video_layout.addWidget(choose_button)
         video_layout.addWidget(reset_button)
         form.addRow("眼保健操视频", self._video_row)
+
+        self._tip_edit = QLineEdit()
+        self._tip_edit.setPlaceholderText("留空使用默认文案，{duration} 会替换为用屏时长")
+        form.addRow("提醒文案", self._tip_edit)
 
         self._dnd_check = QCheckBox("启用免打扰时段")
         form.addRow("", self._dnd_check)
@@ -142,6 +147,7 @@ class SettingsWindow(QWidget):
         self._remind_spin.setValue(cfg.remind_minutes)
         self._idle_spin.setValue(cfg.idle_minutes)
         self._volume_slider.setValue(cfg.volume)
+        self._tip_edit.setText(cfg.reminder_tip)
         self._dnd_check.setChecked(cfg.dnd_enabled)
         self._dnd_start.setTime(QTime.fromString(cfg.dnd_start, "HH:mm"))
         self._dnd_end.setTime(QTime.fromString(cfg.dnd_end, "HH:mm"))
@@ -191,6 +197,7 @@ class SettingsWindow(QWidget):
         cfg.remind_minutes = self._remind_spin.value()
         cfg.idle_minutes = self._idle_spin.value()
         cfg.volume = self._volume_slider.value()
+        cfg.reminder_tip = self._tip_edit.text().strip()
         cfg.dnd_enabled = self._dnd_check.isChecked()
         cfg.dnd_start = self._dnd_start.time().toString("HH:mm")
         cfg.dnd_end = self._dnd_end.time().toString("HH:mm")

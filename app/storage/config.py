@@ -19,6 +19,7 @@ class AppConfig:
     snooze_minutes: int = 5
     volume: int = 50
     video_path: str = ""
+    reminder_tip: str = ""  # 自定义提醒文案，空字符串表示使用默认文案
     dnd_enabled: bool = False
     dnd_start: str = "12:00"
     dnd_end: str = "13:00"

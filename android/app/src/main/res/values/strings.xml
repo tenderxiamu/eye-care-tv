@@ -87,6 +87,12 @@
     <string name="label_audio_only">纯音频模式</string>
     <string name="audio_only_hint">该模式下仅播放声音</string>
 
+    <!-- 自定义提醒文案 -->
+    <string name="label_custom_message">提醒文案</string>
+    <string name="custom_message_default">默认文案</string>
+    <string name="custom_message_title">自定义提醒文案</string>
+    <string name="custom_message_hint">留空使用默认文案，{duration} 会替换为用屏时长</string>
+
     <!-- 白名单 -->
     <string name="label_whitelist">应用白名单</string>
     <string name="whitelist_value_empty">未设置，所有应用都会打断</string>
@@ -114,6 +120,7 @@
     <string name="confirm_rest_message">将立即全屏播放眼保健操，播放结束后自动恢复计时。</string>
     <string name="btn_confirm">开始</string>
     <string name="btn_cancel">取消</string>
+    <string name="btn_save">保存</string>
     <string name="onboarding_title">第 %1$d/%2$d 步 · %3$s</string>
     <string name="onboarding_notification_desc">没有通知权限，计时状态与降级提醒都不会显示。若系统未弹出授权框，请到系统设置中手动开启。</string>
     <string name="onboarding_overlay_desc">悬浮窗权限用于在任意应用之上全屏播放眼保健操。不授权时，提醒会降级为全屏通知页。</string>
