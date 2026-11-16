@@ -33,6 +33,8 @@ data class ReminderSpec(
 class ReminderView(
     context: Context,
     private val spec: ReminderSpec,
+    /** 悬浮窗会绘制到状态栏下方，需要自行让出状态栏高度。 */
+    private val respectSystemBars: Boolean = false,
 ) : FrameLayout(context) {
 
     var onFinished: ((watchedMs: Long) -> Unit)? = null
@@ -129,7 +131,8 @@ class ReminderView(
         val content = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(28), dp(44), dp(28), dp(32))
+            val top = if (respectSystemBars) maxOf(dp(44), systemBarTop() + dp(14)) else dp(44)
+            setPadding(dp(28), top, dp(28), dp(32))
         }
         addView(content, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
 
@@ -175,7 +178,8 @@ class ReminderView(
     private fun buildLandscape() {
         val content = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(12), dp(24), dp(12))
+            val top = if (respectSystemBars) maxOf(dp(12), systemBarTop() + dp(6)) else dp(12)
+            setPadding(dp(24), top, dp(24), dp(12))
         }
         addView(content, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
 
@@ -436,6 +440,12 @@ class ReminderView(
 
     private fun dp(value: Int): Int =
         (value * resources.displayMetrics.density).toInt()
+
+    /** 系统状态栏高度，取不到时按 24dp 兜底。 */
+    private fun systemBarTop(): Int {
+        val id = resources.getIdentifier("status_bar_height", "dimen", "android")
+        return if (id > 0) resources.getDimensionPixelSize(id) else dp(24)
+    }
 
     /** 提醒期间吞掉返回键，避免随手退出；音量键等仍然可用。 */
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {

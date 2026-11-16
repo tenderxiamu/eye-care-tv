@@ -180,7 +180,7 @@ class EyeCareService : Service() {
             showFallbackNotification(spec)
             return
         }
-        val view = ReminderView(this, spec).apply {
+        val view = ReminderView(this, spec, respectSystemBars = true).apply {
             onFinished = { watchedMs -> finishReminder(watchedMs) }
             onSnooze = { snoozeReminder() }
         }
